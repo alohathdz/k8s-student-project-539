@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-research
+  namespace: student-web
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: app-research}
+  template:
+    metadata:
+      labels: {app: app-research}
+    spec:
+      containers:
+        - name: app-research
+          image: alohathdz/app-research:v2
+          ports: [{containerPort: 5000}]
+          readinessProbe:
+            httpGet: {path: /health, port: 5000}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          envFrom:
+            - secretRef: {name: research-admin}
+          volumeMounts:
+            - {name: research-volume, mountPath: /data}
+      volumes:
+        - name: research-volume
+          persistentVolumeClaim: {claimName: research-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-research
+  namespace: student-web
+spec:
+  type: ClusterIP
+  selector: {app: app-research}
+  ports:
+    - {port: 80, targetPort: 5000}

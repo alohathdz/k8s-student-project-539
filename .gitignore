@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+*.env
+apps/app-about/static/student.jpg
+evidence/screenshots/*.png

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: research-data
+  namespace: student-web
+spec:
+  storageClassName: ""
+  volumeName: research-data-539
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
