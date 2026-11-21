@@ -1,31 +1,31 @@
-# Kubernetes Multi-App Lab 539
+# Lab 539 การให้บริการหลายแอปด้วย Kubernetes
 
-Nginx on `k8s-lb` (192.168.29.20) sends requests to Traefik on workers .11 and .12 using NodePort 30082. Traefik routes traffic to three Flask apps in `student-web`. The existing `nginx-lab` uses NodePort 30081 and `cluster-check` uses NodePort 30080.
+Nginx บน `k8s-lb` (192.168.29.20) ส่งคำขอไปยัง Traefik ผ่าน NodePort 30082 ของ Worker ที่ลงท้ายด้วย `.11` และ `.12` จากนั้น Traefik ส่งคำขอต่อไปยังแอป Flask ทั้งสามใน namespace `student-web` ส่วนบริการเดิม `nginx-lab` ใช้ NodePort 30081 และ `cluster-check` ใช้ NodePort 30080
 
-| URL | Service | Expected result |
+| URL | บริการ | ผลที่คาดหวัง |
 | --- | --- | --- |
-| http://www.id-539.com/about | app-about | Student information |
-| http://www.id-539.com/research | app-research | Saved research summary |
-| http://www.id-539.com/api/HelloK8s | app-api | Large centered message |
-| http://admin.id-539.com/edit | app-research | Basic Auth and edit form |
-| http://admin.id-539.com/ | app-research | Redirect to /edit |
+| http://www.id-539.com/about | app-about | แสดงชื่อ รหัสนักศึกษา และรูปเมื่อกำหนดไว้ |
+| http://www.id-539.com/research | app-research | แสดงสรุปงานวิจัยที่บันทึกไว้ |
+| http://www.id-539.com/api/HelloK8s | app-api | แสดงข้อความ `HelloK8s` ขนาดใหญ่กลางหน้า |
+| http://admin.id-539.com/edit | app-research | แสดงแบบฟอร์มแก้ไขหลังยืนยันตัวตนด้วย Basic Auth |
+| http://admin.id-539.com/ | app-research | เปลี่ยนเส้นทางไปยัง `/edit` |
 
-## Deployment
+## ขั้นตอนติดตั้งและทดสอบ
 
-Use a Kubernetes cluster with the dedicated lab volume or an equivalent storage configuration, a configured kubectl client, Helm, Docker with push access, and Nginx on the load balancer.
+เตรียมคลัสเตอร์ Kubernetes ที่ใช้พื้นที่จัดเก็บของ Lab หรือการตั้งค่าที่เทียบเท่า ตั้งค่า `kubectl` ให้เชื่อมต่อคลัสเตอร์ เตรียม Helm และ Docker ที่มีสิทธิ์ push อิมเมจ รวมถึง Nginx บนเครื่อง Load Balancer
 
-1. Build and publish `alohathdz/app-about:v1`, `alohathdz/app-api:v1`, and `alohathdz/app-research:v2` from each directory in `apps/`. If a repository requires authentication, configure an image pull secret for the Deployment or import the matching image into each worker's Kubernetes containerd namespace. Supply a photo separately, if applicable.
-2. Apply `k8s/namespace.yaml`. Create Secret `research-admin` in `student-web` with keys `ADMIN_USER` and `ADMIN_PASSWORD` using privately supplied, nonempty values.
-3. Apply `k8s/research-pv.yaml` and `k8s/research-pvc.yaml` and the three app manifests. Set `STUDENT_NAME` and `STUDENT_ID` on the live `app-about` Deployment. Check rollout status and confirm `research-data` is Bound after scheduling.
-4. Install Traefik chart version `42.4.1` with `--skip-crds` using `k8s/traefik-values.yaml` in namespace `traefik`, then apply `k8s/ingress.yaml`. Check both worker upstreams with the corresponding Host header.
-5. Install `nginx/student-web.conf` as a separate enabled site on the LB. Validate with `nginx -t` before reloading. Map the two hostnames to 192.168.29.20 in the client hosts file.
-6. Open the four URLs. Save research through the admin form, restart only `deployment/app-research`, and compare the content before and after restart. Check the legacy service on NodePort 30081 again.
+1. Build และ push อิมเมจ `alohathdz/app-about:v1`, `alohathdz/app-api:v1` และ `alohathdz/app-research:v2` จากโฟลเดอร์ของแต่ละแอปใน `apps/` หากต้องยืนยันตัวตนเพื่อดึงอิมเมจ ให้กำหนด `imagePullSecrets` ใน Deployment หรือนำอิมเมจตรงรุ่นเข้า namespace `k8s.io` ของ containerd บน Worker แต่ละเครื่อง หากต้องใช้รูปนักศึกษา ให้เตรียมไฟล์รูปแยกไว้
+2. ใช้ `kubectl apply` กับ `k8s/namespace.yaml` แล้วสร้าง Secret ชื่อ `research-admin` ใน `student-web` โดยกำหนดค่า `ADMIN_USER` และ `ADMIN_PASSWORD` ผ่านไฟล์ส่วนตัว ทั้งสองค่าต้องมีข้อมูล
+3. ใช้ `kubectl apply` กับ `k8s/research-pv.yaml`, `k8s/research-pvc.yaml` และ manifest ของแอปทั้งสาม ตั้งค่า `STUDENT_NAME` และ `STUDENT_ID` ให้ Deployment `app-about` ตรวจสถานะ rollout และตรวจว่า PVC `research-data` อยู่ในสถานะ `Bound` หลังจัดวาง Pod
+4. ติดตั้ง Traefik chart รุ่น `42.4.1` ใน namespace `traefik` ด้วย `--skip-crds` และไฟล์ `k8s/traefik-values.yaml` จากนั้นใช้ `kubectl apply` กับ `k8s/ingress.yaml` ทดสอบการส่งคำขอไปยัง Worker ทั้งสองโดยกำหนด `Host` header ให้ตรงกับโดเมนที่ทดสอบ
+5. เพิ่มและเปิดใช้งาน `nginx/student-web.conf` เป็นไซต์แยกบนเครื่อง Load Balancer ตรวจไฟล์ตั้งค่าด้วย `nginx -t` ก่อน reload แล้วกำหนดให้ชื่อโดเมนทั้งสองชี้ไปที่ `192.168.29.20` ในไฟล์ hosts ของเครื่องทดสอบ
+6. เปิดทั้งสี่หน้าบริการ บันทึกสรุปงานวิจัยผ่าน `/edit` แล้วสั่ง restart เฉพาะ `deployment/app-research` เปรียบเทียบเนื้อหาก่อนและหลัง restart จากนั้นตรวจอีกครั้งว่าบริการเดิมบน NodePort 30081 ยังตอบสนอง
 
-The static volume is pinned to `k8s-worker1` and retained when the claim is removed. The recovery test covers Pod replacement on that worker.
+พื้นที่จัดเก็บแบบคงที่ผูกกับ `k8s-worker1` และเก็บไว้เมื่อลบ PVC การทดสอบการกู้คืนครอบคลุมการเปลี่ยน Pod บน Worker เครื่องนี้
 
-### Kubernetes commands
+### คำสั่ง Kubernetes
 
-Run these commands from the repository root using the lab's Kubernetes context. Create a mode 0600 environment file outside the repository with `ADMIN_USER` and `ADMIN_PASSWORD`, then replace `/secure/research-admin.env` with its location. Image credentials, if needed by the workers, should be configured before deploying the apps.
+รันคำสั่งจากโฟลเดอร์หลักของ repository และใช้ Kubernetes context ของ Lab สร้างไฟล์ตัวแปรสภาพแวดล้อมสิทธิ์ `0600` ไว้นอก repository ใส่ค่า `ADMIN_USER` และ `ADMIN_PASSWORD` แล้วแทนที่ `/secure/research-admin.env` ด้วยตำแหน่งไฟล์จริง หาก Worker ต้องยืนยันตัวตนเพื่อดึงอิมเมจ ให้ตั้งค่าสิทธิ์ก่อนติดตั้งแอป
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
@@ -44,6 +44,6 @@ kubectl -n student-web describe ingress student-ingress
 kubectl -n student-web describe pvc research-data
 ```
 
-Add the two entries from [config/linux-hosts.example](config/linux-hosts.example) to the Linux client's `/etc/hosts`, preserving its existing entries. Verify resolution with `getent hosts www.id-539.com admin.id-539.com`.
+เพิ่มสองบรรทัดจาก [config/linux-hosts.example](config/linux-hosts.example) ลงใน `/etc/hosts` ของเครื่อง Linux ที่ใช้ทดสอบ โดยเก็บรายการเดิมไว้ ตรวจการแปลงชื่อโดเมนเป็น IP ด้วย `getent hosts www.id-539.com admin.id-539.com`
 
-The lab uses HTTP on the private VMware network. Screenshots with student data belong in the assignment evidence, separate from the public source repository.
+Lab ใช้ HTTP ภายในเครือข่ายส่วนตัวของ VMware ให้เก็บภาพหน้าจอที่มีข้อมูลนักศึกษาไว้ในเอกสารหลักฐานสำหรับส่งงาน
