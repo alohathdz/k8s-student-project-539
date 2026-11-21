@@ -23,4 +23,27 @@ Use a Kubernetes cluster with the dedicated lab volume or an equivalent storage 
 
 The static volume is pinned to `k8s-worker1` and retained when the claim is removed. The recovery test covers Pod replacement on that worker.
 
+### Kubernetes commands
+
+Run these commands from the repository root using the lab's Kubernetes context. Create a mode 0600 environment file outside the repository with `ADMIN_USER` and `ADMIN_PASSWORD`, then replace `/secure/research-admin.env` with its location. Image credentials, if needed by the workers, should be configured before deploying the apps.
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl -n student-web create secret generic research-admin \
+  --from-env-file=/secure/research-admin.env
+kubectl apply -f k8s/research-pv.yaml -f k8s/research-pvc.yaml
+kubectl apply -f k8s/about.yaml -f k8s/api.yaml -f k8s/research.yaml
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+helm upgrade --install traefik traefik/traefik --version 42.4.1 \
+  --namespace traefik --create-namespace --skip-crds --wait \
+  -f k8s/traefik-values.yaml
+kubectl apply -f k8s/ingress.yaml
+kubectl -n student-web get deployments,pods,services,ingress,pvc
+kubectl -n student-web describe ingress student-ingress
+kubectl -n student-web describe pvc research-data
+```
+
+Add the two entries from [config/linux-hosts.example](config/linux-hosts.example) to the Linux client's `/etc/hosts`, preserving its existing entries. Verify resolution with `getent hosts www.id-539.com admin.id-539.com`.
+
 The lab uses HTTP on the private VMware network. Screenshots with student data belong in the assignment evidence, separate from the public source repository.
